@@ -479,6 +479,41 @@ class BearMCPServer {
               items: { type: 'string' },
               description: 'Tags to exclude from results',
             },
+            dateFrom: {
+              type: 'string',
+              description: 'Filter notes created on or after this date (inclusive) (ISO format: YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)',
+            },
+            dateTo: {
+              type: 'string',
+              description: 'Filter notes created on or before this date (inclusive) (ISO format: YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)',
+            },
+
+            modifiedAfter: {
+              type: 'string',
+              description: 'Filter notes modified on or after this date (inclusive) (ISO format: YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)',
+            },
+            modifiedBefore: {
+              type: 'string',
+              description: 'Filter notes modified on or before this date (inclusive) (ISO format: YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)',
+            },
+
+            includeContent: {
+              type: 'boolean',
+              description: 'Include full content in results (default: true for preview)',
+            },
+
+            includeTrashed: {
+              type: 'boolean',
+              description: 'Include trashed notes in results (default: false)',
+            },
+            includeArchived: {
+              type: 'boolean',
+              description: 'Include archived notes in results (default: false)',
+            },
+            includeEncrypted: {
+              type: 'boolean',
+              description: 'Include encrypted notes in results (default: false)',
+            },
             sortBy: {
               type: 'string',
               enum: ['created', 'modified', 'title', 'size'],
@@ -494,6 +529,11 @@ class BearMCPServer {
               description: 'Maximum number of results',
               minimum: 1,
               maximum: 100,
+            },
+            offset: {
+              type: 'number',
+              description: 'Number of results to skip for pagination',
+              minimum: 0,
             },
           },
           required: [],
@@ -1399,9 +1439,18 @@ ${isRunning ? '✅ Write operations use sync-safe Bear API' : '✅ All database 
         query: args?.query,
         tags: args?.tags,
         excludeTags: args?.excludeTags,
+        dateFrom: args?.dateFrom ? new Date(args.dateFrom) : undefined,
+        dateTo: args?.dateTo ? new Date(args.dateTo) : undefined,
+        modifiedAfter: args?.modifiedAfter ? new Date(args.modifiedAfter) : undefined,
+        modifiedBefore: args?.modifiedBefore ? new Date(args.modifiedBefore) : undefined,
+        includeContent: args?.includeContent,
+        includeTrashed: args?.includeTrashed,
+        includeArchived: args?.includeArchived,
+        includeEncrypted: args?.includeEncrypted,
         sortBy: args?.sortBy || 'modified',
         sortOrder: args?.sortOrder || 'desc',
         limit: args?.limit || 20,
+        offset: args?.offset,
       };
 
       const notes = await this.bearService.getNotesAdvanced(options);
