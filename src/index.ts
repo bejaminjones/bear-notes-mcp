@@ -39,6 +39,10 @@ interface GetNotesByTagArgs {
   tag: string;
 }
 
+interface GetAllTagsArgs {
+  includeOrphanTags?: boolean;
+}
+
 interface GetNotesAdvancedArgs {
   query?: string;
   tags?: string[];
@@ -236,7 +240,7 @@ class BearMCPServer {
             return await this.getNoteByTitle(args as unknown as GetNoteByTitleArgs);
 
           case 'get_all_tags':
-            return await this.getAllTags();
+            return await this.getAllTags(args as unknown as GetAllTagsArgs);
 
           case 'get_notes_by_tag':
             return await this.getNotesByTag(args as unknown as GetNotesByTagArgs);
@@ -438,10 +442,15 @@ class BearMCPServer {
       },
       {
         name: 'get_all_tags',
-        description: 'Get all tags with their usage counts',
+        description: 'Get all tags with their usage counts. By default, only returns tags with active (non-trashed) notes to match Bear sidebar display.',
         inputSchema: {
           type: 'object',
-          properties: {},
+          properties: {
+            includeOrphanTags: {
+              type: 'boolean',
+              description: 'If true, includes tags that only exist on trashed notes (default: false)',
+            },
+          },
           required: [],
         },
       },
@@ -1346,9 +1355,10 @@ ${isRunning ? '✅ Write operations use sync-safe Bear API' : '✅ All database 
     }
   }
 
-  private async getAllTags() {
+  private async getAllTags(args?: GetAllTagsArgs) {
     try {
-      const tags = await this.bearService.getTags();
+      const includeOrphanTags = args?.includeOrphanTags ?? false;
+      const tags = await this.bearService.getTags({ includeOrphanTags });
 
       if (tags.length === 0) {
         return {
@@ -1362,12 +1372,13 @@ ${isRunning ? '✅ Write operations use sync-safe Bear API' : '✅ All database 
       }
 
       const tagsList = tags.map(tag => `🏷️ **${tag.ZTITLE}** (${tag.noteCount} notes)`).join('\n');
+      const orphanNote = includeOrphanTags ? ' (including orphan tags)' : '';
 
       return {
         content: [
           {
             type: 'text',
-            text: `All Tags (${tags.length}):\n\n${tagsList}`,
+            text: `All Tags (${tags.length})${orphanNote}:\n\n${tagsList}`,
           },
         ],
       };

@@ -54,7 +54,7 @@ class BearMCPServer {
                     case 'get_note_by_title':
                         return await this.getNoteByTitle(args);
                     case 'get_all_tags':
-                        return await this.getAllTags();
+                        return await this.getAllTags(args);
                     case 'get_notes_by_tag':
                         return await this.getNotesByTag(args);
                     case 'get_notes_advanced':
@@ -229,10 +229,15 @@ class BearMCPServer {
             },
             {
                 name: 'get_all_tags',
-                description: 'Get all tags with their usage counts',
+                description: 'Get all tags with their usage counts. By default, only returns tags with active (non-trashed) notes to match Bear sidebar display.',
                 inputSchema: {
                     type: 'object',
-                    properties: {},
+                    properties: {
+                        includeOrphanTags: {
+                            type: 'boolean',
+                            description: 'If true, includes tags that only exist on trashed notes (default: false)',
+                        },
+                    },
                     required: [],
                 },
             },
@@ -270,6 +275,38 @@ class BearMCPServer {
                             items: { type: 'string' },
                             description: 'Tags to exclude from results',
                         },
+                        dateFrom: {
+                            type: 'string',
+                            description: 'Filter notes created on or after this date (inclusive) (ISO format: YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)',
+                        },
+                        dateTo: {
+                            type: 'string',
+                            description: 'Filter notes created on or before this date (inclusive) (ISO format: YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)',
+                        },
+                        modifiedAfter: {
+                            type: 'string',
+                            description: 'Filter notes modified on or after this date (inclusive) (ISO format: YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)',
+                        },
+                        modifiedBefore: {
+                            type: 'string',
+                            description: 'Filter notes modified on or before this date (inclusive) (ISO format: YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)',
+                        },
+                        includeContent: {
+                            type: 'boolean',
+                            description: 'Include full content in results (default: true for preview)',
+                        },
+                        includeTrashed: {
+                            type: 'boolean',
+                            description: 'Include trashed notes in results (default: false)',
+                        },
+                        includeArchived: {
+                            type: 'boolean',
+                            description: 'Include archived notes in results (default: false)',
+                        },
+                        includeEncrypted: {
+                            type: 'boolean',
+                            description: 'Include encrypted notes in results (default: false)',
+                        },
                         sortBy: {
                             type: 'string',
                             enum: ['created', 'modified', 'title', 'size'],
@@ -285,6 +322,11 @@ class BearMCPServer {
                             description: 'Maximum number of results',
                             minimum: 1,
                             maximum: 100,
+                        },
+                        offset: {
+                            type: 'number',
+                            description: 'Number of results to skip for pagination',
+                            minimum: 0,
                         },
                     },
                     required: [],
@@ -1067,9 +1109,10 @@ ${isRunning ? '✅ Write operations use sync-safe Bear API' : '✅ All database 
             };
         }
     }
-    async getAllTags() {
+    async getAllTags(args) {
         try {
-            const tags = await this.bearService.getTags();
+            const includeOrphanTags = args?.includeOrphanTags ?? false;
+            const tags = await this.bearService.getTags({ includeOrphanTags });
             if (tags.length === 0) {
                 return {
                     content: [
@@ -1081,11 +1124,12 @@ ${isRunning ? '✅ Write operations use sync-safe Bear API' : '✅ All database 
                 };
             }
             const tagsList = tags.map(tag => `🏷️ **${tag.ZTITLE}** (${tag.noteCount} notes)`).join('\n');
+            const orphanNote = includeOrphanTags ? ' (including orphan tags)' : '';
             return {
                 content: [
                     {
                         type: 'text',
-                        text: `All Tags (${tags.length}):\n\n${tagsList}`,
+                        text: `All Tags (${tags.length})${orphanNote}:\n\n${tagsList}`,
                     },
                 ],
             };
@@ -1152,9 +1196,18 @@ ${isRunning ? '✅ Write operations use sync-safe Bear API' : '✅ All database 
                 query: args?.query,
                 tags: args?.tags,
                 excludeTags: args?.excludeTags,
+                dateFrom: args?.dateFrom ? new Date(args.dateFrom) : undefined,
+                dateTo: args?.dateTo ? new Date(args.dateTo) : undefined,
+                modifiedAfter: args?.modifiedAfter ? new Date(args.modifiedAfter) : undefined,
+                modifiedBefore: args?.modifiedBefore ? new Date(args.modifiedBefore) : undefined,
+                includeContent: args?.includeContent,
+                includeTrashed: args?.includeTrashed,
+                includeArchived: args?.includeArchived,
+                includeEncrypted: args?.includeEncrypted,
                 sortBy: args?.sortBy || 'modified',
                 sortOrder: args?.sortOrder || 'desc',
                 limit: args?.limit || 20,
+                offset: args?.offset,
             };
             const notes = await this.bearService.getNotesAdvanced(options);
             if (notes.length === 0) {

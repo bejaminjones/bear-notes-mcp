@@ -221,28 +221,37 @@ export class BearService {
 
   /**
    * Get all tags with usage counts
+   * @param options.includeOrphanTags - If true, includes tags with no active notes (default: false)
    */
-  async getTags(): Promise<TagWithCount[]> {
+  async getTags(options?: { includeOrphanTags?: boolean }): Promise<TagWithCount[]> {
+    const includeOrphanTags = options?.includeOrphanTags ?? false;
     await this.database.connect(true);
 
     try {
       const sql = `
-        SELECT t.*, COUNT(nt.Z_5NOTES) as noteCount
+        SELECT t.*, COUNT(n.Z_PK) as noteCount
         FROM ZSFNOTETAG t
         LEFT JOIN Z_5TAGS nt ON t.Z_PK = nt.Z_13TAGS
         LEFT JOIN ZSFNOTE n ON nt.Z_5NOTES = n.Z_PK AND n.ZTRASHED = 0
         GROUP BY t.Z_PK
+        ${includeOrphanTags ? '' : 'HAVING noteCount > 0'}
         ORDER BY noteCount DESC, t.ZTITLE ASC
       `;
 
-      return await this.database.query<TagWithCount>(sql);
+      const tags = await this.database.query<TagWithCount>(sql);
+
+      // Normalize tag names to lowercase to match Bear's sidebar display
+      return tags.map(tag => ({
+        ...tag,
+        ZTITLE: tag.ZTITLE?.toLowerCase() ?? tag.ZTITLE,
+      }));
     } finally {
       await this.database.disconnect();
     }
   }
 
   /**
-   * Get notes by tag
+   * Get notes by tag (case-insensitive)
    */
   async getNotesByTag(tagName: string): Promise<NoteWithTags[]> {
     await this.database.connect(true);
@@ -255,7 +264,7 @@ export class BearService {
         JOIN ZSFNOTETAG t ON nt.Z_13TAGS = t.Z_PK
         LEFT JOIN Z_5TAGS nt2 ON n.Z_PK = nt2.Z_5NOTES
         LEFT JOIN ZSFNOTETAG t2 ON nt2.Z_13TAGS = t2.Z_PK
-        WHERE t.ZTITLE = ? AND n.ZTRASHED = 0
+        WHERE LOWER(t.ZTITLE) = LOWER(?) AND n.ZTRASHED = 0
         GROUP BY n.Z_PK
         ORDER BY n.ZMODIFICATIONDATE DESC
       `;
