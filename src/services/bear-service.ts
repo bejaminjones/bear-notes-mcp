@@ -609,7 +609,7 @@ export class BearService {
       if (criteria.hasAllTags && criteria.hasAllTags.length > 0) {
         const allTagConditions = criteria.hasAllTags.map(() => 'tag_names LIKE ?').join(' AND ');
         sql += ` HAVING ${allTagConditions}`;
-        criteria.hasAllTags.forEach(tag => params.push(tag, tag));
+        criteria.hasAllTags.forEach(tag => params.push(tag));
       }
 
       if (criteria.hasAnyTags && criteria.hasAnyTags.length > 0) {
@@ -618,7 +618,7 @@ export class BearService {
           ? ` AND (${anyTagConditions})`
           : ` HAVING (${anyTagConditions})`;
         sql += havingClause;
-        criteria.hasAnyTags.forEach(tag => params.push(tag, tag));
+        criteria.hasAnyTags.forEach(tag => params.push(tag));
       }
 
       sql += ' ORDER BY n.ZMODIFICATIONDATE DESC';
@@ -969,7 +969,7 @@ export class BearService {
         );
         if (titleConditions.length > 0) {
           searchConditions.push(`(${titleConditions.join(' OR ')})`);
-          searchTerms.forEach(term => params.push(term, term));
+          searchTerms.forEach(term => params.push(term));
         }
       }
 
@@ -979,7 +979,7 @@ export class BearService {
         );
         if (contentConditions.length > 0) {
           searchConditions.push(`(${contentConditions.join(' OR ')})`);
-          searchTerms.forEach(term => params.push(term, term));
+          searchTerms.forEach(term => params.push(term));
         }
       }
 
@@ -992,7 +992,7 @@ export class BearService {
         sql += ' GROUP BY n.Z_PK HAVING ';
         const tagConditions = options.tags.map(() => 'tag_names LIKE ?').join(' AND ');
         sql += tagConditions;
-        options.tags.forEach(tag => params.push(tag, tag));
+        options.tags.forEach(tag => params.push(tag));
       } else {
         sql += ' GROUP BY n.Z_PK';
       }
@@ -1158,7 +1158,7 @@ export class BearService {
         .map(() => 'LOWER(n.ZTEXT) LIKE LOWER(?)')
         .join(' OR ');
       sql += ` AND (${keywordConditions})`;
-      referenceKeywords.forEach(keyword => params.push(keyword, keyword));
+      referenceKeywords.forEach(keyword => params.push(keyword));
 
       sql += ' GROUP BY n.Z_PK ORDER BY n.ZMODIFICATIONDATE DESC';
 
